@@ -17,17 +17,6 @@
         @endif
 
         @if($activeOrder && $activeOrder->orderItems->count() > 0)
-             <!-- Table Info -->
-            @if($activeOrder->table_number)
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <div class="flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m5-13v13m7-13v13M4 13h16"></path>
-                        </svg>
-                        <span class="text-blue-800 font-medium">Table Number: {{ $activeOrder->table_number }}</span>
-                    </div>
-                </div>
-            @endif
             <!-- Cart Header -->
             <div class="grid grid-cols-3 gap-4 border-b pb-2 font-semibold">
                 <div>Order</div>

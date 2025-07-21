@@ -7,22 +7,24 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Jalankan migrasi.
      */
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->enum('payment_method', ['cash', 'cashless']);
-            $table->enum('payment_status', ['pending', 'paid', 'failed']);
+            $table->enum('payment_method', ['mitraaans'])->default('mitraaans');
+            $table->enum('payment_status', ['pending', 'paid', 'failed', 'expired'])->default('pending');
+            $table->string('transaction_id', 100)->unique()->nullable();
+            $table->string('payment_link')->nullable();
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
         });
     }
 
     /**
-     * Reverse the migrations.
+     * Batalkan migrasi.
      */
     public function down(): void
     {
