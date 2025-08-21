@@ -14,6 +14,9 @@ Route::get('/register', [AuthController::class, 'showRegister'])->name('register
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Midtrans Callback (tidak perlu authentication untuk webhook)
+Route::post('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
+
 // Protected Routes
 Route::middleware([AuthCheck::class])->group(function () {
     Route::get('/', function () {
@@ -32,6 +35,10 @@ Route::middleware([AuthCheck::class])->group(function () {
     Route::delete('/cart/remove/{item}', [UsidebarController::class, 'removeFromCart'])->name('cart.remove');
     Route::put('/cart/update-product/{productId}', [UsidebarController::class, 'updateCartByProduct'])->name('cart.update.product');
     Route::delete('/cart/remove-product/{productId}', [UsidebarController::class, 'removeFromCartByProduct'])->name('cart.remove.product');
+    
+    // Payment routes
+    Route::post('/payment/create', [PaymentController::class, 'createTransaction'])->name('payment.create');
+    Route::get('/payment/status/{transactionId}', [PaymentController::class, 'checkStatus'])->name('payment.status');
 
     // Admin only routes
     Route::middleware([AuthCheck::class . ':admin'])->group(function () {
@@ -40,6 +47,7 @@ Route::middleware([AuthCheck::class])->group(function () {
 
         // Payment Management
         Route::get('/payment', [AsidebarController::class, 'payment'])->name('payment');
+        Route::get('/payment/{id}/details', [AsidebarController::class, 'paymentDetails'])->name('payment.details');
         
         // Product Management
         Route::get('/product', [AsidebarController::class, 'product'])->name('product');

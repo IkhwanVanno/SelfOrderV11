@@ -7,24 +7,33 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Jalankan migrasi.
+     * Run the migrations.
      */
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->enum('payment_method', ['mitraaans'])->default('mitraaans');
-            $table->enum('payment_status', ['pending', 'paid', 'failed', 'expired'])->default('pending');
-            $table->string('transaction_id', 100)->unique()->nullable();
-            $table->string('payment_link')->nullable();
-            $table->timestamp('paid_at')->nullable();
+            $table->string('transaction_id')->unique();
+            $table->decimal('gross_amount', 15, 2);
+            $table->string('payment_type')->nullable();
+            $table->enum('payment_status', ['pending', 'paid', 'failed', 'challenge'])->default('pending');
+            $table->enum('transaction_status', ['pending', 'capture', 'settlement', 'deny', 'cancel', 'expire', 'failure'])->default('pending');
+            $table->string('fraud_status')->nullable();
+            $table->string('status_code')->nullable();
+            $table->string('status_message')->nullable();
+            $table->string('signature_key')->nullable();
+            $table->json('midtrans_response')->nullable();
+            $table->timestamp('transaction_time')->nullable();
             $table->timestamps();
+            
+            $table->index(['transaction_id', 'transaction_status']);
+            $table->index('payment_status');
         });
     }
 
     /**
-     * Batalkan migrasi.
+     * Reverse the migrations.
      */
     public function down(): void
     {

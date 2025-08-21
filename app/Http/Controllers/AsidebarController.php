@@ -32,6 +32,42 @@ class AsidebarController extends Controller
         return view('admin.payment', compact('payments'));
     }
 
+    // Payment Details (for modal)
+    public function paymentDetails($id)
+    {
+        try {
+            $payment = Payment::with(['order.user', 'order.orderItems.product'])->findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'payment' => [
+                    'id' => $payment->id,
+                    'transaction_id' => $payment->transaction_id,
+                    'order_id' => $payment->order_id,
+                    'gross_amount' => $payment->gross_amount,
+                    'formatted_amount' => $payment->formatted_amount,
+                    'payment_type' => $payment->payment_type,
+                    'payment_status' => $payment->payment_status,
+                    'transaction_status' => $payment->transaction_status,
+                    'fraud_status' => $payment->fraud_status,
+                    'status_code' => $payment->status_code,
+                    'status_message' => $payment->status_message,
+                    'status_color' => $payment->status_color,
+                    'created_at' => $payment->created_at->format('d/m/Y H:i:s'),
+                    'transaction_time' => $payment->transaction_time ? $payment->transaction_time->format('d/m/Y H:i:s') : null,
+                    'customer_name' => $payment->order->user->username ?? 'N/A',
+                    'table_number' => $payment->order->table_number,
+                    'order_items_count' => $payment->order->orderItems->count(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment not found'
+            ], 404);
+        }
+    }
+
     // Product Management
     public function product()
     {

@@ -31,7 +31,7 @@ class UsidebarController extends Controller
         return view('user.snack', compact('products', 'cartItems'));
     }
 
-        private function getCartItems()
+    private function getCartItems()
     {
         $user = Auth::user();
         $activeOrder = Order::where('user_id', $user->id)
@@ -70,7 +70,7 @@ class UsidebarController extends Controller
             'user_id' => $user->id,
             'status' => 'process',
         ], [
-            'table_number' => $request->table_number ?? null, // Biarkan null untuk diisi saat checkout
+            'table_number' => $request->table_number ?? null,
             'total_price' => 0,
         ]);
 
@@ -187,5 +187,20 @@ class UsidebarController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Item berhasil dihapus']);
+    }
+
+    public function checkout()
+    {
+        $user = Auth::user();
+        $activeOrder = Order::where('user_id', $user->id)
+            ->where('status', 'process')
+            ->with('orderItems.product')
+            ->first();
+
+        if (!$activeOrder || $activeOrder->orderItems->isEmpty()) {
+            return redirect()->route('cart')->with('error', 'Keranjang kosong');
+        }
+
+        return view('user.checkout', compact('activeOrder'));
     }
 }
