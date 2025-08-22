@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
 use Midtrans\Snap;
-use Midtrans\Notification;
 
 class PaymentController extends Controller
 {
@@ -144,152 +143,60 @@ class PaymentController extends Controller
      */
     public function callback(Request $request)
     {
-        try {
-            $notification = new Notification();
-
-            // Extract notification data
-            $transactionStatus = $notification->transaction_status;
-            $transactionId = $notification->order_id;
-            $fraudStatus = $notification->fraud_status ?? null;
-            $statusCode = $notification->status_code ?? null;
-            $statusMessage = $notification->status_message ?? null;
-            $signatureKey = $notification->signature_key ?? null;
-            $paymentType = $notification->payment_type ?? null;
-            $grossAmount = $notification->gross_amount ?? null;
-            $transactionTime = $notification->transaction_time ?? null;
-
-            Log::info('Midtrans notification received', [
-                'transaction_id' => $transactionId,
-                'transaction_status' => $transactionStatus,
-                'fraud_status' => $fraudStatus,
-                'status_code' => $statusCode,
-                'payment_type' => $paymentType,
-                'gross_amount' => $grossAmount
-            ]);
-
-            // Find payment by transaction_id
-            $payment = Payment::where('transaction_id', $transactionId)->first();
-
-            if (!$payment) {
-                Log::error('Payment not found', ['transaction_id' => $transactionId]);
-                return response()->json([
-                    'status' => 'error', 
-                    'message' => 'Payment record not found'
-                ], 404);
-            }
-
-            $order = $payment->order;
-
-            DB::beginTransaction();
-            try {
-                // Update payment record dengan data dari Midtrans
+        $serverKey = config('midtrans.server_key');
+        $hashed = hash("sha512", $request->order_id.$request->status_code.$request->gross_amount.$serverKey);
+        
+        if ($hashed == $request->signature_key) {
+            $payment = Payment::where('transaction_id', $request->order_id)->first();
+            
+            if ($payment) {
                 $updateData = [
-                    'transaction_status' => $transactionStatus,
-                    'fraud_status' => $fraudStatus,
-                    'status_code' => $statusCode,
-                    'status_message' => $statusMessage,
-                    'signature_key' => $signatureKey,
-                    'payment_type' => $paymentType,
-                    'midtrans_response' => $notification->getResponse(),
+                    'payment_type' => $request->payment_type,
+                    'transaction_status' => $request->transaction_status,
+                    'fraud_status' => $request->fraud_status,
+                    'status_code' => $request->status_code,
+                    'status_message' => $request->status_message,
+                    'signature_key' => $request->signature_key,
+                    'midtrans_response' => $request->all(),
                 ];
-
-                if ($transactionTime) {
-                    $updateData['transaction_time'] = date('Y-m-d H:i:s', strtotime($transactionTime));
+                
+                if ($request->transaction_time) {
+                    $updateData['transaction_time'] = $request->transaction_time;
                 }
-
-                // Handle different transaction statuses sesuai dokumentasi Midtrans
-                switch ($transactionStatus) {
+                
+                // Handle different transaction statuses
+                switch ($request->transaction_status) {
                     case 'capture':
-                        if ($fraudStatus == 'challenge') {
-                            // Credit card transaction is challenged by FDS
-                            $updateData['payment_status'] = 'challenge';
-                            $order->update(['status' => 'pending']);
-                            Log::info('Payment challenged by fraud detection', ['transaction_id' => $transactionId]);
-                        } else if ($fraudStatus == 'accept') {
-                            // Credit card transaction is captured and not challenged by FDS
+                        if ($request->fraud_status == 'accept') {
                             $updateData['payment_status'] = 'paid';
-                            $order->update(['status' => 'paid']);
-                            Log::info('Payment captured successfully', ['transaction_id' => $transactionId]);
+                            $payment->order->update(['status' => 'queue']);
+                        } else if ($request->fraud_status == 'challenge') {
+                            $updateData['payment_status'] = 'challenge';
                         }
                         break;
-
+                        
                     case 'settlement':
-                        // Transaction is successfully settled
                         $updateData['payment_status'] = 'paid';
-                        $order->update(['status' => 'paid']);
-                        Log::info('Payment settled successfully', ['transaction_id' => $transactionId]);
+                        $payment->order->update(['status' => 'queue']);
                         break;
-
+                        
                     case 'pending':
-                        // Transaction is created and waiting to be paid
                         $updateData['payment_status'] = 'pending';
-                        $order->update(['status' => 'pending']);
-                        Log::info('Payment is pending', ['transaction_id' => $transactionId]);
                         break;
-
+                        
                     case 'deny':
-                        // Payment was denied by bank or FDS
-                        $updateData['payment_status'] = 'failed';
-                        $order->update(['status' => 'cancelled']);
-                        Log::info('Payment denied', ['transaction_id' => $transactionId]);
-                        break;
-
-                    case 'expire':
-                        // Payment was not completed within allowed time
-                        $updateData['payment_status'] = 'failed';
-                        $order->update(['status' => 'cancelled']);
-                        Log::info('Payment expired', ['transaction_id' => $transactionId]);
-                        break;
-
                     case 'cancel':
-                        // Payment was cancelled by customer
-                        $updateData['payment_status'] = 'failed';
-                        $order->update(['status' => 'cancelled']);
-                        Log::info('Payment cancelled', ['transaction_id' => $transactionId]);
-                        break;
-
+                    case 'expire':
                     case 'failure':
-                        // Payment failed to process
                         $updateData['payment_status'] = 'failed';
-                        $order->update(['status' => 'cancelled']);
-                        Log::error('Payment failed', ['transaction_id' => $transactionId]);
-                        break;
-
-                    default:
-                        Log::warning('Unknown transaction status', [
-                            'transaction_id' => $transactionId,
-                            'status' => $transactionStatus
-                        ]);
                         break;
                 }
-
+                
                 $payment->update($updateData);
-                DB::commit();
-
-                Log::info('Payment notification processed successfully', [
-                    'transaction_id' => $transactionId,
-                    'final_status' => $updateData['payment_status']
-                ]);
-
-                return response()->json(['status' => 'success']);
-
-            } catch (\Exception $e) {
-                DB::rollback();
-                throw $e;
             }
-
-        } catch (\Exception $e) {
-            Log::error('Payment callback error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_body' => $request->getContent()
-            ]);
-            
-            return response()->json([
-                'status' => 'error', 
-                'message' => 'Failed to process payment notification'
-            ], 500);
         }
+        
+        return response('OK', 200);
     }
 
     /**
@@ -309,9 +216,6 @@ class PaymentController extends Controller
                 'payment_status' => $payment->payment_status,
                 'transaction_status' => $payment->transaction_status,
                 'order_status' => $payment->order->status,
-                'is_paid' => $payment->isPaid(),
-                'is_pending' => $payment->isPending(),
-                'is_failed' => $payment->isFailed(),
             ]);
             
         } catch (\Exception $e) {

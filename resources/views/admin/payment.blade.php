@@ -183,11 +183,6 @@
                                                     Check Status
                                                 </button>
                                             @endif
-                                            
-                                            <button onclick="viewOrderDetails({{ $payment->order_id }})" 
-                                                    class="text-xs px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
-                                                    View Order
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -321,11 +316,6 @@
                     button.disabled = false;
                     button.textContent = 'Check Status';
                 });
-        }
-
-        // View order details
-        function viewOrderDetails(orderId) {
-            window.open(`/order/${orderId}`, '_blank');
         }
 
         // Close modal

@@ -14,9 +14,6 @@ Route::get('/register', [AuthController::class, 'showRegister'])->name('register
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Midtrans Callback (tidak perlu authentication untuk webhook)
-Route::post('/payment/callback', [PaymentController::class, 'callback'])->name('payment.callback');
-
 // Protected Routes
 Route::middleware([AuthCheck::class])->group(function () {
     Route::get('/', function () {
@@ -44,6 +41,7 @@ Route::middleware([AuthCheck::class])->group(function () {
     Route::middleware([AuthCheck::class . ':admin'])->group(function () {
         // Order Management
         Route::get('/order', [AsidebarController::class, 'order'])->name('order');
+        Route::put('/order/{id}/status', [AsidebarController::class, 'updateOrderStatus'])->name('order.update.status');
 
         // Payment Management
         Route::get('/payment', [AsidebarController::class, 'payment'])->name('payment');

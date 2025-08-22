@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('table_number', 10);
             $table->decimal('total_price', 10, 2);
-            $table->enum('status', ['process', 'ready', 'delivered'])->default('process');
+            $table->enum('status', ['queue','process', 'ready', 'delivered'])->default('queue');
             $table->timestamps();
         });
     }

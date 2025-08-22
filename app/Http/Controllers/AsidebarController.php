@@ -22,6 +22,33 @@ class AsidebarController extends Controller
         return view('admin.order', compact('orders'));
     }
 
+    // Update Order Status
+    public function updateOrderStatus(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'status' => 'required|in:queue,process,ready,delivered'
+            ]);
+
+            $order = Order::findOrFail($id);
+            $oldStatus = $order->status;
+            
+            $order->update(['status' => $request->status]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order status berhasil diubah dari ' . ucfirst($oldStatus) . ' ke ' . ucfirst($request->status),
+                'new_status' => $request->status
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah status order: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     // Payment Management
     public function payment()
     {

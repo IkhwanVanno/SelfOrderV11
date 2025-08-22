@@ -82,7 +82,7 @@ class Payment extends Model
      */
     public function getFormattedAmountAttribute(): string
     {
-        return 'Rp ' . number_format($this->gross_amount, 0, ',', '.');
+        return 'Rp ' . number_format((float)$this->gross_amount, 0, ',', '.');
     }
 
     /**
